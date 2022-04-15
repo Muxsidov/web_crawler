@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import re
 
 links_for_parsing = []
+print("For commit")
 
 # Parsing all vacancies page (list of vacancies)
 def parse_vacancies(request):
