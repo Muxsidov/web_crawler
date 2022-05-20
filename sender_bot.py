@@ -2,6 +2,7 @@ import psycopg2
 from psycopg2 import OperationalError
 import requests
 import telebot
+import time
 
 tg_token = "5377110236:AAHy2nS-91j_IbSo5A0Zru1PhJMsNICzu-A"
 tel_group_id = "-1001696534045"
@@ -41,6 +42,9 @@ def execute_read_query(connection, query):
 select_vacancies = "SELECT * FROM vacancies"
 vacancies = execute_read_query(connection, select_vacancies)
 
+select_job_titles = "SELECT job_title FROM vacancies"
+job_titles = execute_read_query(connection, select_job_titles)
+
 # Send a message to telegram channel
 def send_to_telegram(message):
     try:
@@ -49,6 +53,23 @@ def send_to_telegram(message):
     except Error as e:
         print(f"While sending the message to tg '{e}' occurred")
 
-for vacancy in vacancies:
-    vacancy = str(vacancy).replace("&", "and")
-    send_to_telegram(vacancy)
+# Call send_to_telegram for each vacancy
+count = 38
+while count != 83:
+    for vacancy in vacancies:  
+        if vacancy[0] == count:
+            print(vacancy[0], vacancy[1])
+            #vacancy = str(vacancy).replace("&", "and")
+            send_to_telegram(vacancy)
+            count += 1
+            time.sleep(2)
+
+# Remove unwanted characters from the message
+# characters = "'()"
+# #print(type(job_titles))
+# for job_title in job_titles:
+#     for char in characters:
+#         job_title = str(job_title).replace(char, "")
+#     print(job_title)
+# print(len(job_titles))
+

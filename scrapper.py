@@ -1,6 +1,6 @@
-from asyncio.windows_events import NULL
-from os import link
-from matplotlib.pyplot import title
+# from asyncio.windows_events import NULL
+# from os import link
+# from matplotlib.pyplot import title
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -18,7 +18,7 @@ def parse_vacancies(request):
 
     for i in vacancies_list.find_all('a', href=re.compile(r"/vakansy_view")):
         links_for_parsing.append(i["href"])
-        #print(i["href"])
+        print(i["href"])
 
 # Parsing vacancy_view (vacancy page itself)
 def parse_vacancy_view(link):
@@ -35,7 +35,11 @@ def parse_vacancy_view(link):
 
     # Employer
     employer = vacancy_view.find('a', href=re.compile(r"/company_view"))
-    single_vacancy.append(employer.text)
+    if employer == None:
+        #single_vacancy.append(None)
+        single_vacancy.append(vacancy_view.find(class_=re.compile("h2_grey")).find_next("td").text)
+    else:
+        single_vacancy.append(employer.text)
     #print(employer.text)
 
     # Period of publication
@@ -49,28 +53,38 @@ def parse_vacancy_view(link):
     temp = 0
     for i in vacancy_view.find_all(class_=re.compile("td_sfera")):
         single_vacancy.append(i.text)
-        #print(i.text)
+
         temp += 1
-    
-    if temp < 13:
-        single_vacancy.insert(11, None)
+        print(temp, i.text)
+        
+    if temp == 11:
+        #print(title.text, employer.text)
+        single_vacancy.insert(13, None)
+        single_vacancy.insert(14, None)    
+    if temp == 12:
+        single_vacancy.insert(13, None)
+
     # if temp > 12:
     #     print(temp, vacancy_view.title)
     #     print(vacancy_view.find_all(class_=re.compile("td_sfera")))
-    print(len(single_vacancy))
+    print(len(single_vacancy), temp)
     vacacies_list.append(tuple(single_vacancy))
 
 parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy.html"))
 parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-2.html"))
 parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-3.html"))
+parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-4.html"))
+parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-5.html"))
 
-#print(links_for_parsing)
-print(len(links_for_parsing))
+print(links_for_parsing)
+# print(len(links_for_parsing))
 
 #request = requests.get("https://uzjobs.uz/r/vakansy_view-27452.html")
-# for i in links_for_parsing:
-#     parse_vacancy_view(requests.get("https://uzjobs.uz/" + i))
-parse_vacancy_view(requests.get("https://uzjobs.uz/e/vakansy_view-27529.html"))
+for i in links_for_parsing:
+    parse_vacancy_view(requests.get("https://uzjobs.uz/" + i))
+#parse_vacancy_view(requests.get("https://uzjobs.uz/e/vakansy_view-27729.html"))
+#parse_vacancy_view(requests.get("https://uzjobs.uz/e/vakansy_view-27525.html")) # 12
+# parse_vacancy_view(requests.get("https://uzjobs.uz/e/vakansy_view-27729.html")) # 11
 
 # Creating connection to PostgreSQL
 def create_connection(db_name, db_user, db_password, db_host, db_port):
@@ -123,7 +137,7 @@ CREATE TABLE IF NOT EXISTS vacancies (
   job_title TEXT NOT NULL, 
   employer TEXT NOT NULL,
   publication_period TEXT,
-  position TEXT NOT NULL,
+  position TEXT,
   duties TEXT,
   age TEXT,
   gender TEXT,
@@ -132,7 +146,7 @@ CREATE TABLE IF NOT EXISTS vacancies (
   requirements TEXT,
   region TEXT,
   employment TEXT,
-  salary TEXT NOT NULL,
+  salary TEXT,
   motivation TEXT,
   information TEXT
 )
@@ -144,9 +158,12 @@ vacancy_records = ', '.join(["%s"] * len(vacacies_list))
 
 # Inserting into "vacancies db"
 insert_query = (
-    f"INSERT INTO vacancies (job_title, employer, publication_period, position, duties, age, gender, residence, education, requirements, region, employment, salary, motivation, information) VALUES {vacancy_records} RETURNING id" 
+    f"INSERT INTO vacancies (job_title, employer, publication_period, position, duties, age, gender, residence, education, requirements, region, employment, salary, motivation, information) VALUES {vacancy_records}" 
 )
 
 connection.autocommit = True
 cursor = connection.cursor()
+f = open("test_file.doc", "w", encoding="utf-8")
+f.write(str(vacacies_list))
+f.close()
 cursor.execute(insert_query, vacacies_list)
