@@ -1,8 +1,12 @@
+from ssl import VERIFY_X509_PARTIAL_CHAIN
+from tkinter import EXCEPTION
+from matplotlib.pyplot import text
 import psycopg2
 from psycopg2 import OperationalError
 import requests
 import telebot
 import time
+from urllib.parse import quote
 
 tg_token = "5377110236:AAHy2nS-91j_IbSo5A0Zru1PhJMsNICzu-A"
 tel_group_id = "-1001696534045"
@@ -39,37 +43,29 @@ def execute_read_query(connection, query):
     except OperationalError as e:
         print(f"The error '{e}' occurred")
 
-select_vacancies = "SELECT * FROM vacancies"
+select_vacancies = f"SELECT * FROM vacancies WHERE status = 0 and id = 1"
 vacancies = execute_read_query(connection, select_vacancies)
 
-select_job_titles = "SELECT job_title FROM vacancies"
-job_titles = execute_read_query(connection, select_job_titles)
-
-# Send a message to telegram channel
-def send_to_telegram(message):
+# send_to_telegram(vacancies)
+def send_to_telegram(message, id):
     try:
-     telegram_api_url = f"https://api.telegram.org/bot{tg_token}/sendMessage?chat_id={tel_group_id}&text={message}"
-     tel_resp = requests.get(telegram_api_url)
-    except Error as e:
+        print(id)
+        # https://stackoverflow.com/questions/6431061/python-encoding-characters-with-urllib-quote
+        # vacancies = quote(str(vacancies).encode("utf-8"))
+        print(quote(message))
+        print(type(message))
+        telegram_api_url = f"https://api.telegram.org/bot{tg_token}/sendMessage?chat_id={tel_group_id}&text={quote(message)}"
+        # for messages being too long https://stackoverflow.com/questions/70819525/send-long-message-in-telegram-bot-python
+        tel_resp = requests.get(telegram_api_url)
+        print("message has been sent sucesfully")
+        # vacancies = execute_read_query(connection, f"UPDATE vacancies SET status = 1 WHERE id = {i}")
+        # return True
+    except Exception as e:
         print(f"While sending the message to tg '{e}' occurred")
 
-# Call send_to_telegram for each vacancy
-count = 38
-while count != 83:
-    for vacancy in vacancies:  
-        if vacancy[0] == count:
-            print(vacancy[0], vacancy[1])
-            #vacancy = str(vacancy).replace("&", "and")
-            send_to_telegram(vacancy)
-            count += 1
-            time.sleep(2)
-
-# Remove unwanted characters from the message
-# characters = "'()"
-# #print(type(job_titles))
-# for job_title in job_titles:
-#     for char in characters:
-#         job_title = str(job_title).replace(char, "")
-#     print(job_title)
-# print(len(job_titles))
+for vacancy in vacancies:  
+    (id, status, job_title, employer, publication_period, position, duties, age, gender, residence, education, requirements, region, employment, salary, motivation, *information) = vacancy
+    text = f"{job_title}\n{employer}\n{publication_period}\n{position}\n{duties}\n{age}\n{gender}\n{residence}\n{education}\n{requirements}\n{region}\n{employment}\n{salary}\n{motivation}\n{information}\n"
+    print("text: ", text)
+    send_to_telegram(text, id)
 
