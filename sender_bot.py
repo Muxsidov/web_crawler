@@ -59,11 +59,14 @@ def send_to_telegram(message, id):
         telegram_api_url = f"https://api.telegram.org/bot{tg_token}/sendMessage?chat_id={tel_group_id}&text={quote(message)}&parse_mode=HTML"
         # for messages being too long https://stackoverflow.com/questions/70819525/send-long-message-in-telegram-bot-python
         tel_resp = requests.get(telegram_api_url)
-        connection.autocommit = True        
-        cursor = connection.cursor()
-        print("message has been sent sucesfully")
-        update = f"UPDATE vacancies SET status = 1 WHERE id = {id}"
-        cursor.execute(update)
+        if tel_resp.status_code == 200:
+            connection.autocommit = True        
+            cursor = connection.cursor()
+            print("message has been sent sucesfully")
+            update = f"UPDATE vacancies SET status = 1 WHERE id = {id}"
+            cursor.execute(update)
+        else:
+            print(f"{id} message wasn't send")
         sleep(1)
     except Exception as e:
         print(f"While sending the message to tg '{e}' occurred")
