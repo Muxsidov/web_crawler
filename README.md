@@ -1,6 +1,7 @@
 # web_crawler
 Read https://uzjobs.uz/e/index.html and write it to telegram channel
-https://stackoverflow.com/questions/45268368/how-to-send-a-hyperlink-in-bot-sendmessage - hiding the hyperlink
+
+https://stackoverflow.com/questions/41345254/how-to-make-links-for-words-in-telegram-bot - hiding the hyperlink
 # sprapper.py:
 https://www.geeksforgeeks.org/implementing-web-scraping-python-beautiful-soup/
 https://www.reddit.com/r/learnpython/comments/8173s3/beautifulsoup_parsing_and_regex_matching_the_end/
