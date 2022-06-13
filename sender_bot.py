@@ -1,11 +1,6 @@
-from ssl import VERIFY_X509_PARTIAL_CHAIN
-from tkinter import EXCEPTION
-from matplotlib.pyplot import text
 import psycopg2
 from psycopg2 import OperationalError
 import requests
-import telebot
-from time import sleep
 from urllib.parse import quote
 
 tg_token = "5377110236:AAHy2nS-91j_IbSo5A0Zru1PhJMsNICzu-A"
@@ -67,7 +62,6 @@ def send_to_telegram(message, id):
             cursor.execute(update)
         else:
             print(f"{id} message wasn't send")
-        sleep(1)
     except Exception as e:
         print(f"While sending the message to tg '{e}' occurred")
 
