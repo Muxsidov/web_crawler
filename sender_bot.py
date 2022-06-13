@@ -5,7 +5,7 @@ import psycopg2
 from psycopg2 import OperationalError
 import requests
 import telebot
-import time
+from time import sleep
 from urllib.parse import quote
 
 tg_token = "5377110236:AAHy2nS-91j_IbSo5A0Zru1PhJMsNICzu-A"
@@ -34,6 +34,7 @@ connection = create_connection(
 
 # Selecting Records
 def execute_read_query(connection, query):
+    connection.autocommit = True
     cursor = connection.cursor()
     result = None
     try:
@@ -43,7 +44,10 @@ def execute_read_query(connection, query):
     except OperationalError as e:
         print(f"The error '{e}' occurred")
 
-select_vacancies = f"SELECT * FROM vacancies WHERE status = 0 and id = 1"
+connection.autocommit = True
+cursor = connection.cursor()
+
+select_vacancies = f"SELECT * FROM vacancies WHERE status = 0"
 vacancies = execute_read_query(connection, select_vacancies)
 
 # send_to_telegram(vacancies)
@@ -52,20 +56,20 @@ def send_to_telegram(message, id):
         print(id)
         # https://stackoverflow.com/questions/6431061/python-encoding-characters-with-urllib-quote
         # vacancies = quote(str(vacancies).encode("utf-8"))
-        print(quote(message))
-        print(type(message))
-        telegram_api_url = f"https://api.telegram.org/bot{tg_token}/sendMessage?chat_id={tel_group_id}&text={quote(message)}"
+        telegram_api_url = f"https://api.telegram.org/bot{tg_token}/sendMessage?chat_id={tel_group_id}&text={quote(message)}&parse_mode=HTML"
         # for messages being too long https://stackoverflow.com/questions/70819525/send-long-message-in-telegram-bot-python
         tel_resp = requests.get(telegram_api_url)
+        connection.autocommit = True        
+        cursor = connection.cursor()
         print("message has been sent sucesfully")
-        # vacancies = execute_read_query(connection, f"UPDATE vacancies SET status = 1 WHERE id = {i}")
-        # return True
+        update = f"UPDATE vacancies SET status = 1 WHERE id = {id}"
+        cursor.execute(update)
+        sleep(1)
     except Exception as e:
         print(f"While sending the message to tg '{e}' occurred")
 
 for vacancy in vacancies:  
-    (id, status, job_title, employer, publication_period, position, duties, age, gender, residence, education, requirements, region, employment, salary, motivation, *information) = vacancy
-    text = f"{job_title}\n{employer}\n{publication_period}\n{position}\n{duties}\n{age}\n{gender}\n{residence}\n{education}\n{requirements}\n{region}\n{employment}\n{salary}\n{motivation}\n{information}\n"
-    print("text: ", text)
+    (id, status, job_title, employer, publication_period, position, duties, age, gender, residence, education, requirements, region, employment, salary, motivation, information, link) = vacancy
+    text = f"test line - id: {id}\n{job_title}\n{employer}\n{publication_period}\n\n<a href='{link}'>For more information click here</a>"#{position}\n{duties}\n{age}\n{gender}\n{residence}\n{education}\n{requirements}\n{region}\n{employment}\n{salary}\n{motivation}\n{information}\n"
     send_to_telegram(text, id)
 

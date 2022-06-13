@@ -1,6 +1,3 @@
-# from asyncio.windows_events import NULL
-# from os import link
-# from matplotlib.pyplot import title
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -20,18 +17,22 @@ def parse_vacancies(request):
         links_for_parsing.append(i["href"])
         print(i["href"])
 
-# Parsing vacancy_view (vacancy page itself)
-def parse_vacancy_view(link):
-    vacancy_view = BeautifulSoup(link.content, 'html5lib')
+parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy.html"))
+parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-2.html"))
+parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-3.html"))
+parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-4.html"))
+parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-5.html"))
+
+for i in links_for_parsing:
+    
+    link = ("https://uzjobs.uz/" + i)
+    vacancy_view = BeautifulSoup(requests.get(link).content, 'html5lib')
     
     single_vacancy = []
-    # Useful to extract Job_title and Employer
-    #print(vacancy_view.title.string)
     
     # Job title
     title = vacancy_view.find(class_=re.compile("h2_grey"))
     single_vacancy.append(title.text)
-    #print(title.text)
 
     # Employer
     employer = vacancy_view.find('a', href=re.compile(r"/company_view"))
@@ -40,16 +41,7 @@ def parse_vacancy_view(link):
         single_vacancy.append(vacancy_view.find(class_=re.compile("h2_grey")).find_next("td").text)
     else:
         single_vacancy.append(employer.text)
-    #print(employer.text)
 
-    # Period of publication
-    #print(vacancy_view.find(text="Period of publication"))
-
-    #for i in vacancy_view.find_all(class_=re.compile("td_grey")):
-        #print(i)
-        #print(i.text)
-    
-    # Add the status
     single_vacancy.insert(0, 0)
     
     # Search by CSS class td_sfera (td_grey_10 might be usefull too)
@@ -61,8 +53,6 @@ def parse_vacancy_view(link):
         # print(temp, i.text)
     if temp == 11:
         print(single_vacancy[0])
-        print(single_vacancy)
-        #print(title.text, employer.text)
 
     if temp == 11:
         #print(title.text, employer.text)
@@ -71,27 +61,10 @@ def parse_vacancy_view(link):
     if temp == 12:
         single_vacancy.insert(14, None)
 
-    # if temp > 12:
-    #     print(temp, vacancy_view.title)
-    #     print(vacancy_view.find_all(class_=re.compile("td_sfera")))
-    print(len(single_vacancy), temp)
+    print("link", link)
+    single_vacancy.insert(16, link)
+    print(single_vacancy)
     vacacies_list.append(tuple(single_vacancy))
-
-parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy.html"))
-parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-2.html"))
-parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-3.html"))
-parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-4.html"))
-parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-5.html"))
-
-print(links_for_parsing)
-# print(len(links_for_parsing))
-
-#request = requests.get("https://uzjobs.uz/r/vakansy_view-27452.html")
-for i in links_for_parsing:
-    parse_vacancy_view(requests.get("https://uzjobs.uz/" + i))
-#parse_vacancy_view(requests.get("https://uzjobs.uz/e/vakansy_view-27729.html"))
-#parse_vacancy_view(requests.get("https://uzjobs.uz/e/vakansy_view-27525.html")) # 12
-# parse_vacancy_view(requests.get("https://uzjobs.uz/e/vakansy_view-27729.html")) # 11
 
 # Creating connection to PostgreSQL
 def create_connection(db_name, db_user, db_password, db_host, db_port):
@@ -156,7 +129,8 @@ CREATE TABLE IF NOT EXISTS vacancies (
   employment TEXT,
   salary TEXT,
   motivation TEXT,
-  information TEXT
+  information TEXT,
+  link TEXT
 )
 """
 
@@ -166,12 +140,11 @@ vacancy_records = ', '.join(["%s"] * len(vacacies_list))
 
 # Inserting into "vacancies db"
 insert_query = (
-    f"INSERT INTO vacancies (status, job_title, employer, publication_period, position, duties, age, gender, residence, education, requirements, region, employment, salary, motivation, information) VALUES {vacancy_records}" 
+    f"INSERT INTO vacancies (status, job_title, employer, publication_period, position, duties, age, gender, residence, education, requirements, region, employment, salary, motivation, information, link) VALUES {vacancy_records}"
 )
 
 connection.autocommit = True
 cursor = connection.cursor()
-f = open("test_file.doc", "w", encoding="utf-8")
-f.write(str(vacacies_list))
-f.close()
 cursor.execute(insert_query, vacacies_list)
+
+ 
