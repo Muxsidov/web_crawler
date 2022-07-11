@@ -1,3 +1,5 @@
+from numpy import empty
+import sys
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -7,7 +9,7 @@ from psycopg2 import OperationalError
 links_for_parsing = []
 
 # List of job descriptions
-vacacies_list = []
+vacancies_list = []
 
 # Parsing all vacancies page (list of vacancies)
 def parse_vacancies(request):
@@ -22,49 +24,6 @@ parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-2.html"))
 parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-3.html"))
 parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-4.html"))
 parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-5.html"))
-
-for i in links_for_parsing:
-    
-    link = ("https://uzjobs.uz/" + i)
-    vacancy_view = BeautifulSoup(requests.get(link).content, 'html5lib')
-    
-    single_vacancy = []
-    
-    # Job title
-    title = vacancy_view.find(class_=re.compile("h2_grey"))
-    single_vacancy.append(title.text)
-
-    # Employer
-    employer = vacancy_view.find('a', href=re.compile(r"/company_view"))
-    if employer == None:
-        #single_vacancy.append(None)
-        single_vacancy.append(vacancy_view.find(class_=re.compile("h2_grey")).find_next("td").text)
-    else:
-        single_vacancy.append(employer.text)
-
-    single_vacancy.insert(0, 0)
-    
-    # Search by CSS class td_sfera (td_grey_10 might be usefull too)
-    temp = 0
-    for i in vacancy_view.find_all(class_=re.compile("td_sfera")):
-        single_vacancy.append(i.text)
-
-        temp += 1
-        # print(temp, i.text)
-    if temp == 11:
-        print(single_vacancy[0])
-
-    if temp == 11:
-        #print(title.text, employer.text)
-        single_vacancy.insert(14, None)
-        single_vacancy.insert(15, None)    
-    if temp == 12:
-        single_vacancy.insert(14, None)
-
-    print("link", link)
-    single_vacancy.insert(16, link)
-    print(single_vacancy)
-    vacacies_list.append(tuple(single_vacancy))
 
 # Creating connection to PostgreSQL
 def create_connection(db_name, db_user, db_password, db_host, db_port):
@@ -109,6 +68,75 @@ def execute_query(connection, query):
         print("Query executed successfully")
     except OperationalError as e:
         print(f"The error '{e}' occurred")
+# Selecting Records
+def execute_read_query(connection, query):
+    connection.autocommit = True
+    cursor = connection.cursor()
+    result = None
+    try:
+        cursor.execute(query)
+        result = cursor.fetchall()
+        return result
+    except OperationalError as e:
+        print(f"The error '{e}' occurred")
+
+connection.autocommit = True
+cursor = connection.cursor()
+
+for i in links_for_parsing: 
+    link = ("https://uzjobs.uz/" + i)
+    print("Link: ", link)
+    get_link = f"SELECT job_title FROM vacancies WHERE link = '{link}'"
+
+    link_returned = execute_read_query(connection, get_link)
+    if link_returned:
+        print("Link we got: ", link_returned)
+        continue
+
+    vacancy_view = BeautifulSoup(requests.get(link).content, 'html5lib')
+    
+    single_vacancy = []
+    
+    # Job title
+    title = vacancy_view.find(class_=re.compile("h2_grey"))
+    single_vacancy.append(title.text)
+
+    # Employer
+    employer = vacancy_view.find('a', href=re.compile(r"/company_view"))
+    if employer == None:
+        #single_vacancy.append(None)
+        single_vacancy.append(vacancy_view.find(class_=re.compile("h2_grey")).find_next("td").text)
+    else:
+        single_vacancy.append(employer.text)
+
+    single_vacancy.insert(0, 0)
+    
+    # Search by CSS class td_sfera (td_grey_10 might be usefull too)
+    temp = 0
+    for i in vacancy_view.find_all(class_=re.compile("td_sfera")):
+        single_vacancy.append(i.text)
+
+        temp += 1
+        # print(temp, i.text)
+    if temp == 11:
+        print(single_vacancy[0])
+
+    if temp == 11:
+        #print(title.text, employer.text)
+        single_vacancy.insert(14, None)
+        single_vacancy.insert(15, None)    
+    if temp == 12:
+        single_vacancy.insert(14, None)
+
+    # print("link", link)
+    single_vacancy.insert(16, link)
+    # print(single_vacancy)
+    vacancies_list.append(tuple(single_vacancy))
+
+# If no new job found quite 
+if not vacancies_list:
+    print("vacancies list is empty")
+    sys.exit()
 
 # Query for creating the tables
 create_users_table = """
@@ -136,7 +164,7 @@ CREATE TABLE IF NOT EXISTS vacancies (
 
 execute_query(connection, create_users_table)
 
-vacancy_records = ', '.join(["%s"] * len(vacacies_list))
+vacancy_records = ', '.join(["%s"] * len(vacancies_list))
 
 # Inserting into "vacancies db"
 insert_query = (
@@ -145,6 +173,6 @@ insert_query = (
 
 connection.autocommit = True
 cursor = connection.cursor()
-cursor.execute(insert_query, vacacies_list)
+cursor.execute(insert_query, vacancies_list)
 
  
