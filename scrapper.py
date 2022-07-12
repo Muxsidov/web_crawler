@@ -1,10 +1,10 @@
-from numpy import empty
 import sys
 import requests
-from bs4 import BeautifulSoup
 import re
-import psycopg2
-from psycopg2 import OperationalError
+
+from bs4 import BeautifulSoup
+from psycopg2 import OperationalError, connect
+
 
 links_for_parsing = []
 
@@ -25,11 +25,12 @@ parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-3.html"))
 parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-4.html"))
 parse_vacancies(requests.get("https://uzjobs.uz/e/vakansy-5.html"))
 
+
 # Creating connection to PostgreSQL
 def create_connection(db_name, db_user, db_password, db_host, db_port):
     connection = None
     try:
-        connection = psycopg2.connect(
+        connection = connect(
             database=db_name,
             user=db_user,
             password=db_password,
@@ -40,6 +41,7 @@ def create_connection(db_name, db_user, db_password, db_host, db_port):
     except OperationalError as e:
         print(f"The error '{e}' occurred while connecting")
     return connection
+
 
 # Create Database on PostgreSQL
 def create_database(connection, query):
@@ -59,6 +61,7 @@ connection = create_connection(
     "vacancies", "postgres", "postgres", "127.0.0.1", "5432"
 )
 
+
 # Execute Python SQL queries on PostgreSQL
 def execute_query(connection, query):
     connection.autocommit = True
@@ -68,6 +71,8 @@ def execute_query(connection, query):
         print("Query executed successfully")
     except OperationalError as e:
         print(f"The error '{e}' occurred")
+
+
 # Selecting Records
 def execute_read_query(connection, query):
     connection.autocommit = True
@@ -83,16 +88,21 @@ def execute_read_query(connection, query):
 connection.autocommit = True
 cursor = connection.cursor()
 
-for i in links_for_parsing: 
-    link = ("https://uzjobs.uz/" + i)
-    print("Link: ", link)
+
+def check_if_link_already_handled(link_returned):
     get_link = f"SELECT job_title FROM vacancies WHERE link = '{link}'"
 
     link_returned = execute_read_query(connection, get_link)
     if link_returned:
         print("Link we got: ", link_returned)
-        continue
+        return link_returned
 
+
+for i in links_for_parsing: 
+    link = ("https://uzjobs.uz/" + i)
+    if check_if_link_already_handled(link):
+        continue
+    
     vacancy_view = BeautifulSoup(requests.get(link).content, 'html5lib')
     
     single_vacancy = []
@@ -138,6 +148,7 @@ if not vacancies_list:
     print("vacancies list is empty")
     sys.exit()
 
+
 # Query for creating the tables
 create_users_table = """
 CREATE TABLE IF NOT EXISTS vacancies (
@@ -166,9 +177,14 @@ execute_query(connection, create_users_table)
 
 vacancy_records = ', '.join(["%s"] * len(vacancies_list))
 
+
 # Inserting into "vacancies db"
 insert_query = (
-    f"INSERT INTO vacancies (status, job_title, employer, publication_period, position, duties, age, gender, residence, education, requirements, region, employment, salary, motivation, information, link) VALUES {vacancy_records}"
+    f"INSERT INTO vacancies (status, job_title, employer, \
+            publication_period, position, duties, age, gender, \
+            residence, education, requirements, region, employment, \
+            salary, motivation, information, link) \
+        VALUES {vacancy_records}"
 )
 
 connection.autocommit = True
